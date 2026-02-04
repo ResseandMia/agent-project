@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>执行流程 - Agent Coding</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 50px;
+            background: linear-gradient(45deg, #00d4aa, #00a8e8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .timeline {
+            position: relative;
+            padding-left: 40px;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(180deg, #00d4aa, #00a8e8);
+            border-radius: 2px;
+        }
+        
+        .step {
+            position: relative;
+            margin-bottom: 40px;
+            opacity: 0;
+            transform: translateX(-20px);
+            animation: slideIn 0.5s forwards;
+        }
+        
+        .step:nth-child(1) { animation-delay: 0.1s; }
+        .step:nth-child(2) { animation-delay: 0.2s; }
+        .step:nth-child(3) { animation-delay: 0.3s; }
+        .step:nth-child(4) { animation-delay: 0.4s; }
+        .step:nth-child(5) { animation-delay: 0.5s; }
+        .step:nth-child(6) { animation-delay: 0.6s; }
+        .step:nth-child(7) { animation-delay: 0.7s; }
+        
+        @keyframes slideIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .step-icon {
+            position: absolute;
+            left: -40px;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 1;
+        }
+        
+        .step.pending .step-icon {
+            background: #333;
+            color: #666;
+        }
+        
+        .step.completed .step-icon {
+            background: linear-gradient(135deg, #00d4aa, #00a8e8);
+            color: #fff;
+        }
+        
+        .step.active .step-icon {
+            background: linear-gradient(135deg, #ffd700, #ffaa00);
+            color: #1a1a2e;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .step-content {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px 28px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .step:hover .step-content {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(5px);
+        }
+        
+        .step-number {
+            font-size: 0.75em;
+            color: #888;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .step-title {
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .step-desc {
+            color: #aaa;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+        
+        .step-command {
+            margin-top: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85em;
+            color: #00d4aa;
+            overflow-x: auto;
+        }
+        
+        .step-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+        
+        .status-pending {
+            background: rgba(255, 255, 255, 0.1);
+            color: #888;
+        }
+        
+        .status-completed {
+            background: rgba(0, 212, 170, 0.2);
+            color: #00d4aa;
+        }
+        
+        .status-active {
+            background: rgba(255, 215, 0, 0.2);
+            color: #ffd700;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .footer a {
+            color: #00d4aa;
+            text-decoration: none;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Agent Coding 执行流程</h1>
+        
+        <div class="timeline">
+            <!-- Step 1 -->
+            <div class="step completed">
+                <div class="step-icon">✅</div>
+                <div class="step-content">
+                    <div class="step-number">Step 1</div>
+                    <div class="step-title">
+                        环境准备
+                        <span class="step-status status-completed">已完成</span>
+                    </div>
+                    <div class="step-desc">安装 OpenCode、GitHub CLI、Vercel CLI，配置开发环境</div>
+                    <div class="step-command">npm install -g opencode-ai vercel && curl ... | tar -xz</div>
+                </div>
+            </div>
+            
+            <!-- Step 2 -->
+            <div class="step completed">
+                <div class="step-icon">✅</div>
+                <div class="step-content">
+                    <div class="step-number">Step 2</div>
+                    <div class="step-title">
+                        创建项目
+                        <span class="step-status status-completed">已完成</span>
+                    </div>
+                    <div class="step-desc">新建项目目录，初始化 Git 仓库</div>
+                    <div class="step-command">mkdir ~/agent-project && cd ~/agent-project && git init</div>
+                </div>
+            </div>
+            
+            <!-- Step 3 -->
+            <div class="step active">
+                <div class="step-icon">3</div>
+                <div class="step-content">
+                    <div class="step-number">Step 3</div>
+                    <div class="step-title">
+                        Agent Coding
+                        <span class="step-status status-active">进行中</span>
+                    </div>
+                    <div class="step-desc">使用 OpenCode AI 助手，根据需求自动生成代码</div>
+                    <div class="step-command">opencode run "创建贪吃蛇游戏"</div>
+                </div>
+            </div>
+            
+            <!-- Step 4 -->
+            <div class="step pending">
+                <div class="step-icon">4</div>
+                <div class="step-content">
+                    <div class="step-number">Step 4</div>
+                    <div class="step-title">
+                        GitHub 托管
+                        <span class="step-status status-pending">待执行</span>
+                    </div>
+                    <div class="step-desc">提交代码，创建 GitHub 仓库，推送代码</div>
+                    <div class="step-command">git add . && git commit -m "init" && gh repo create ... && git push</div>
+                </div>
+            </div>
+            
+            <!-- Step 5 -->
+            <div class="step pending">
+                <div class="step-icon">5</div>
+                <div class="step-content">
+                    <div class="step-number">Step 5</div>
+                    <div class="step-title">
+                        Vercel 部署
+                        <span class="step-status status-pending">待执行</span>
+                    </div>
+                    <div class="step-desc">使用 Vercel CLI 自动部署到云端，获取访问链接</div>
+                    <div class="step-command">vercel --token $TOKEN --yes --prod</div>
+                </div>
+            </div>
+            
+            <!-- Step 6 -->
+            <div class="step pending">
+                <div class="step-icon">6</div>
+                <div class="step-content">
+                    <div class="step-number">Step 6</div>
+                    <div class="step-title">
+                        完成 ✅
+                        <span class="step-status status-pending">待执行</span>
+                    </div>
+                    <div class="step-desc">网站上线！访问 Vercel 分配的链接即可查看</div>
+                    <div class="step-command">🎉 网站已上线！</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Powered by <strong>OpenClaw</strong> + <strong>OpenCode</strong> + <strong>GitHub</strong> + <strong>Vercel</strong></p>
+            <p>Agent Coding - 全程自动化开发</p>
+        </div>
+    </div>
+    
+    <script>
+        // 动画效果
+        document.querySelectorAll('.step').forEach((step, index) => {
+            step.style.animationDelay = `${index * 0.15}s`;
+        });
+        
+        console.log('🚀 Agent Coding 执行流程页面加载完成');
+        console.log('当前阶段: Step 3 - Agent Coding');
+    </script>
+</body>
+</html>
