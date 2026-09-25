@@ -8,5 +8,6 @@ public/audio/music.wav
 public/audio/music.mid
 out/*
 !out/google-ads-scaling.mp4
+!out/google-ads-scaling_720p_preview.mp4
 !out/cover_3x4.png
 !out/cover_9x16.png

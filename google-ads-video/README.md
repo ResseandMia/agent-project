@@ -2,7 +2,7 @@
 
 竖屏 1080×1920、30fps、约 4 分钟的双人动画解说短视频。脚本、画面、配音、配乐、音效全部由 Claude Code 用代码生成，没有用任何付费 API 或版权素材。
 
-- 成片：`out/google-ads-scaling.mp4`（H.264 + AAC，响度 -14 LUFS，可直接上传抖音、视频号、小红书、YouTube Shorts）
+- 成片：`out/google-ads-scaling.mp4`（1080p，H.264 + AAC，响度 -14 LUFS，可直接上传抖音、视频号、小红书、YouTube Shorts）；手机预览用 `out/google-ads-scaling_720p_preview.mp4`（21 MB）
 - 封面：`out/cover_3x4.png`（小红书 3:4）、`out/cover_9x16.png`（竖屏 9:16）
 - 工具调研报告：[`docs/video-tools-research.md`](docs/video-tools-research.md)，整理了 GitHub 和网络上能帮 AI 生成视频、动画、剪辑的工具、插件和 Skill
 - 场景开发规范：[`docs/SCENE_GUIDE.md`](docs/SCENE_GUIDE.md)
