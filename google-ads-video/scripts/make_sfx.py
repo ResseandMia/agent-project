@@ -14,7 +14,9 @@ import soundfile as sf
 from scipy import signal
 
 SR = 48000
-SF2 = "/usr/share/sounds/sf2/FluidR3_GM.sf2"
+SF2_CANDIDATES = [os.environ.get("SF2_PATH", ""), "/usr/share/sounds/sf2/FluidR3_GM.sf2",
+                  "/opt/homebrew/share/soundfonts/default.sf2", "/usr/local/share/soundfonts/default.sf2"]
+SF2 = next((p for p in SF2_CANDIDATES if p and os.path.exists(p)), SF2_CANDIDATES[1])  # set SF2_PATH to any General MIDI .sf2
 rng = np.random.default_rng(42)
 
 

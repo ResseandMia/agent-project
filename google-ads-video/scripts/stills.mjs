@@ -18,6 +18,7 @@ const target = args[0] ?? "all";
 const framesArg = args[1] ?? "auto";
 const scale = Number((args.find((a) => a.startsWith("--scale=")) ?? "--scale=0.5").split("=")[1]);
 
+const LABEL_FONT = ["/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", "/System/Library/Fonts/Menlo.ttc", "C:/Windows/Fonts/consola.ttf"].find((p) => fs.existsSync(p));
 const scenes = target === "all" ? tl.scenes : tl.scenes.filter((s) => target.split(",").includes(s.id));
 if (!scenes.length) {
   console.error("no scene", target, "known:", tl.scenes.map((s) => s.id).join(" "));
@@ -47,9 +48,8 @@ if (isolate) {
   });
 }
 const serveUrl = await bundle({ entryPoint: path.join(root, "src/index.ts"), publicDir: path.join(root, "public"), webpackOverride });
-const browser = await openBrowser("chrome", {
-  browserExecutable: "/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell",
-});
+const browserPath = process.env.REMOTION_BROWSER ?? "/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell";
+const browser = await openBrowser("chrome", fs.existsSync(browserPath) ? { browserExecutable: browserPath } : {});
 const comp = await selectComposition({ serveUrl, id: "Main", puppeteerInstance: browser });
 
 for (const s of scenes) {
@@ -76,7 +76,7 @@ for (const s of scenes) {
   const inputs = files.flatMap((f) => ["-i", f]);
   const pads = files.length < cols * rows ? cols * rows - files.length : 0;
   const filter =
-    files.map((_, i) => `[${i}:v]drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf:text='${s.id} +${rel[i]}':x=10:y=10:fontsize=28:fontcolor=white:box=1:boxcolor=black@0.6[v${i}]`).join(";") +
+    files.map((_, i) => `[${i}:v]drawtext=${LABEL_FONT ? `fontfile=${LABEL_FONT}:` : ""}text='${s.id} +${rel[i]}':x=10:y=10:fontsize=28:fontcolor=white:box=1:boxcolor=black@0.6[v${i}]`).join(";") +
     ";" +
     files.map((_, i) => `[v${i}]`).join("") +
     (pads ? `` : "") +
@@ -84,7 +84,13 @@ for (const s of scenes) {
   if (files.length === 1) {
     execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", files[0], sheet]);
   } else {
-    execFileSync("ffmpeg", ["-y", "-loglevel", "error", ...inputs, "-filter_complex", filter, "-map", "[out]", "-q:v", "3", sheet]);
+    try {
+      execFileSync("ffmpeg", ["-y", "-loglevel", "error", ...inputs, "-filter_complex", filter, "-map", "[out]", "-q:v", "3", sheet]);
+    } catch {
+      // ffmpeg without drawtext (e.g. some Windows/macOS builds): tile without frame labels
+      const plain = filter.replace(/\[(\d+):v\]drawtext=[^;]*\[v\d+\];/g, "").replace(/\[v(\d+)\]/g, "[$1:v]");
+      execFileSync("ffmpeg", ["-y", "-loglevel", "error", ...inputs, "-filter_complex", plain, "-map", "[out]", "-q:v", "3", sheet]);
+    }
   }
   console.log(`${s.id}: ${files.length} stills → ${path.relative(root, sheet)}`);
 }

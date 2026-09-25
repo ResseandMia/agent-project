@@ -19,7 +19,9 @@ import soundfile as sf
 BPM = 112
 TPB = 480  # ticks per beat
 BAR = 4 * TPB
-SF2 = "/usr/share/sounds/sf2/FluidR3_GM.sf2"
+SF2_CANDIDATES = [os.environ.get("SF2_PATH", ""), "/usr/share/sounds/sf2/FluidR3_GM.sf2",
+                  "/opt/homebrew/share/soundfonts/default.sf2", "/usr/local/share/soundfonts/default.sf2"]
+SF2 = next((p for p in SF2_CANDIDATES if p and os.path.exists(p)), SF2_CANDIDATES[1])  # set SF2_PATH to any General MIDI .sf2
 
 # GM programs (0-indexed)
 MARIMBA, GLOCK, PIZZ, FINGER_BASS, WARM_PAD, EPIANO, MUTED_GTR = 12, 9, 45, 33, 89, 4, 28

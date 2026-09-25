@@ -372,6 +372,16 @@ def main():
                 "endCard": script.get("end_card", "")}
     with open(os.path.join(ROOT, "src/data/timeline.json"), "w") as f:
         json.dump(timeline, f, ensure_ascii=False, separators=(",", ":"))
+    # music cuts follow the two record-scratch moments: hook line 1 ("停！") and reality line 0
+    by_id = {s["id"]: s for s in scenes_out}
+    if "hook" in by_id and len(by_id["hook"]["lines"]) > 1:
+        h1 = by_id["hook"]["lines"][1]["start"]
+        audio = {"musicRestartAt": h1 + 15, "musicCuts": [[h1 - 15, h1 + 15]]}
+        if "reality" in by_id and by_id["reality"]["lines"]:
+            r0 = by_id["reality"]["lines"][0]["start"]
+            audio["musicCuts"].append([r0 - 15, r0 + 15])
+        with open(os.path.join(ROOT, "src/data/audio.json"), "w") as f:
+            json.dump(audio, f)
     if qa:
         with open(os.path.join(ROOT, "build/tts_qa.json"), "w") as f:
             json.dump(qa, f, ensure_ascii=False, indent=1)

@@ -8,8 +8,14 @@ MODELS=${MODELS:-$HOME/.cache/google-ads-video/models}
 sudo_if() { if [ "$(id -u)" = 0 ]; then "$@"; else sudo "$@"; fi; }
 
 # 1. system packages: ffmpeg, fonts for emoji/CJK fallback, FluidSynth + GM soundfont for the music
-sudo_if apt-get update -qq
-sudo_if env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ffmpeg fonts-noto-cjk fonts-noto-color-emoji fluidsynth fluid-soundfont-gm
+if [ "$(uname)" = "Darwin" ]; then
+  # macOS (Homebrew). FluidSynth has no bundled GM soundfont here: download any General MIDI .sf2
+  # (e.g. FluidR3_GM / GeneralUser GS / MuseScore_General) and export SF2_PATH=/path/to/file.sf2
+  brew install ffmpeg fluid-synth
+else
+  sudo_if apt-get update -qq
+  sudo_if env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ffmpeg fonts-noto-cjk fonts-noto-color-emoji fluidsynth fluid-soundfont-gm
+fi
 
 # 2. python + node deps
 pip install -q sherpa-onnx soundfile numpy scipy mido fonttools

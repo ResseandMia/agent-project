@@ -7,7 +7,8 @@ cd "$(dirname "$0")/.."
 OUT=${OUT:-out/google-ads-scaling.mp4}
 mkdir -p out public/audio
 
-python3 scripts/make_sfx.py public/sfx >/dev/null
+# SFX are committed; regenerate only when asked (needs a General MIDI soundfont, see SF2_PATH)
+[ -n "${REGEN_SFX:-}" ] && python3 scripts/make_sfx.py public/sfx >/dev/null
 
 # music length: whole video, or from the post-hook restart point to the end
 read -r DUR FINAL < <(python3 -c "

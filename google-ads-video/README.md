@@ -6,6 +6,7 @@
 - 封面：`out/cover_3x4.png`（小红书 3:4）、`out/cover_9x16.png`（竖屏 9:16）
 - 工具调研报告：[`docs/video-tools-research.md`](docs/video-tools-research.md)，整理了 GitHub 和网络上能帮 AI 生成视频、动画、剪辑的工具、插件和 Skill
 - 场景开发规范：[`docs/SCENE_GUIDE.md`](docs/SCENE_GUIDE.md)
+- **在本地继续制作**：[`docs/HANDOFF.md`](docs/HANDOFF.md)（现状、本地运行步骤、经验教训、下一步计划），给 Claude Code 的项目说明在 [`CLAUDE.md`](CLAUDE.md)
 
 ## 角色和结构
 
