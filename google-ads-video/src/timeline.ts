@@ -38,6 +38,8 @@ export const TL = timelineJson as unknown as Timeline;
 export const allLines = (): Line[] => TL.scenes.flatMap((s) => s.lines);
 
 const SceneCtx = createContext<Scene | null>(null);
+/** scene context without the throwing guard (for components usable inside and outside scenes) */
+export const SceneCtxOptional = SceneCtx;
 export const SceneProvider: React.FC<{ scene: Scene; children: React.ReactNode }> = ({ scene, children }) =>
   React.createElement(SceneCtx.Provider, { value: scene }, children);
 
@@ -63,16 +65,17 @@ export const useWordTime = () => {
   return (lineIdx: number, needle: string, fallbackOffset = 0) => {
     const l = s.lines[lineIdx < 0 ? s.lines.length + lineIdx : lineIdx];
     if (!l) return fallbackOffset;
-    const full = l.captions.map((c) => c.text).join("");
+    const full = l.captions.map((c) => c.text.replace(/\n/g, "")).join("");
     const pos = full.indexOf(needle);
     if (pos < 0) return l.relStart + fallbackOffset;
     let acc = 0;
     for (const c of l.captions) {
-      if (pos < acc + c.text.length) {
-        const frac = (pos - acc) / Math.max(1, c.text.length);
+      const len = c.text.replace(/\n/g, "").length;
+      if (pos < acc + len) {
+        const frac = (pos - acc) / Math.max(1, len);
         return Math.round(c.start - s.start + frac * (c.end - c.start));
       }
-      acc += c.text.length;
+      acc += len;
     }
     return l.relStart + fallbackOffset;
   };

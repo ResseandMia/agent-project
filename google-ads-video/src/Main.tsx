@@ -23,9 +23,14 @@ const Fallback: React.FC = () => {
 };
 
 /** scene wrapper: quick entrance/exit so every cut feels intentional */
-const SceneShell: React.FC<{ children: React.ReactNode; duration: number; noExit?: boolean }> = ({ children, duration, noExit }) => {
+const SceneShell: React.FC<{ children: React.ReactNode; duration: number; noExit?: boolean; noEnter?: boolean }> = ({
+  children,
+  duration,
+  noExit,
+  noEnter,
+}) => {
   const f = useCurrentFrame();
-  const inP = interpolate(f, [0, 8], [0, 1], clamp);
+  const inP = noEnter ? 1 : interpolate(f, [0, 8], [0, 1], clamp);
   const outP = noExit ? 0 : interpolate(f, [duration - 7, duration], [0, 1], clamp);
   return (
     <AbsoluteFill
@@ -48,7 +53,7 @@ export const Main: React.FC = () => {
         return (
           <Sequence key={s.id} from={s.start} durationInFrames={s.duration} name={s.id}>
             <SceneProvider scene={s}>
-              <SceneShell duration={s.duration} noExit={s.id === TL.scenes[TL.scenes.length - 1].id}>
+              <SceneShell duration={s.duration} noEnter={s.start === 0} noExit={s.id === TL.scenes[TL.scenes.length - 1].id}>
                 <Comp />
               </SceneShell>
             </SceneProvider>

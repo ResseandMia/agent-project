@@ -50,8 +50,8 @@ export const ChapterBar: React.FC = () => {
               height: 92,
               borderRadius: 20,
               border: `${BORDER - 1}px solid ${C.ink}`,
-              background: active ? s.color : done ? C.ink : C.paper,
-              color: active ? C.paper : done ? C.paper : C.muted,
+              background: active ? s.color : done ? `${s.color}38` : C.paper,
+              color: active ? C.paper : done ? C.ink : C.muted,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -64,7 +64,8 @@ export const ChapterBar: React.FC = () => {
               overflow: "hidden",
             }}
           >
-            <span style={{ fontFamily: FONT.num, fontSize: active ? 40 : 34 }}>{done ? "✓" : i + 1}</span>
+            <span style={{ fontFamily: FONT.num, fontSize: active ? 40 : 34 }}>{i + 1}</span>
+            {done ? <span style={{ fontFamily: FONT.black, fontSize: 32, color: s.color, textShadow: `1px 1px 0 ${C.ink}` }}>✓</span> : null}
             {active ? <span>{s.label}</span> : null}
           </div>
         );

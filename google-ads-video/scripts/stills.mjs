@@ -89,3 +89,5 @@ for (const s of scenes) {
   console.log(`${s.id}: ${files.length} stills → ${path.relative(root, sheet)}`);
 }
 await browser.close({ silent: true });
+// each bundle is ~120 MB in the OS temp dir: remove it
+fs.rmSync(serveUrl, { recursive: true, force: true });

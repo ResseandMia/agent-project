@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import {
   AbsoluteFill,
   Audio,
@@ -10,6 +10,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
+import { allLines, SceneCtxOptional } from "../timeline";
 import { BORDER, C, FONT, SHADOW } from "../theme";
 
 export const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
@@ -199,12 +200,18 @@ export const Emoji: React.FC<{ e: string; size?: number; style?: React.CSSProper
   <span style={{ fontFamily: "Noto Color Emoji", fontSize: size, lineHeight: 1, display: "inline-block", ...style }}>{e}</span>
 );
 
-/** Sound effect at a frame (relative to the enclosing Sequence) */
-export const Sfx: React.FC<{ name: string; at: number; volume?: number }> = ({ name, at, volume = 0.5 }) => (
-  <Sequence from={Math.max(0, Math.round(at))} durationInFrames={150} layout="none">
-    <Audio src={staticFile(`sfx/${name}.wav`)} volume={volume} />
-  </Sequence>
-);
+/** Sound effect at a frame (relative to the enclosing Sequence). Automatically turned down while someone is speaking. */
+export const Sfx: React.FC<{ name: string; at: number; volume?: number }> = ({ name, at, volume = 0.5 }) => {
+  const scene = useContext(SceneCtxOptional);
+  const from = Math.max(0, Math.round(at));
+  const abs = (scene?.start ?? 0) + from;
+  const overlapsSpeech = scene ? allLines().some((l) => abs < l.end && abs + 12 > l.start) : false;
+  return (
+    <Sequence from={from} durationInFrames={150} layout="none">
+      <Audio src={staticFile(`sfx/${name}.wav`)} volume={overlapsSpeech ? volume * 0.55 : volume} />
+    </Sequence>
+  );
+};
 
 /** gentle idle float */
 export const useFloat = (amp = 8, speed = 0.08, phase = 0) => {

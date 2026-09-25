@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Full render: SFX → music (length from the timeline) → Remotion render → loudness mastering.
+# Full render: SFX → music (length from the timeline) → Remotion render (high-quality master out/raw.mp4)
+# → delivery encode with EBU R128 loudness mastering.
 # Run scripts/build_tts.py first (voice + timeline).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -9,22 +10,26 @@ mkdir -p out public/audio
 python3 scripts/make_sfx.py public/sfx >/dev/null
 
 # music length: whole video, or from the post-hook restart point to the end
-DUR=$(python3 -c "
+read -r DUR FINAL < <(python3 -c "
 import json
 tl=json.load(open('src/data/timeline.json')); a=json.load(open('src/data/audio.json'))
-start=a.get('musicRestartAt',0)
-print((tl['totalFrames']-start)/tl['fps'])")
-python3 scripts/compose_music.py --duration "$DUR" --out public/audio/music.wav
+start=a.get('musicRestartAt',0); fps=tl['fps']
+end=[s for s in tl['scenes'] if s['id']=='endcard']
+final=(end[0]['start']-start)/fps+0.2 if end else (tl['totalFrames']-start)/fps-2.5
+print((tl['totalFrames']-start)/fps, final)")
+python3 scripts/compose_music.py --duration "$DUR" --final-at "$FINAL" --out public/audio/music.wav
 
 node scripts/gen_scene_index.mjs
 npx tsc --noEmit -p .
-npx remotion render Main out/raw.mp4 --codec=h264 --crf=18 --audio-codec=aac --audio-bitrate=256k \
+npx remotion render Main out/raw.mp4 --codec=h264 --crf=15 --audio-codec=aac --audio-bitrate=320k \
   --pixel-format=yuv420p --concurrency=4 --log=error
 
 # two-pass EBU R128 loudness normalization to -14 LUFS / -1 dBTP (short-video platform standard)
 STATS=$(ffmpeg -hide_banner -i out/raw.mp4 -af loudnorm=I=-14:TP=-1.0:LRA=11:print_format=json -f null - 2>&1 | sed -n '/^{/,/^}/p')
 get() { echo "$STATS" | python3 -c "import sys,json; print(json.load(sys.stdin)['$1'])"; }
-ffmpeg -hide_banner -loglevel error -y -i out/raw.mp4 -c:v copy \
+# delivery encode: x264 slow/animation tuning keeps flat colours crisp at a sane size; faststart for streaming
+ffmpeg -hide_banner -loglevel error -y -i out/raw.mp4 \
+  -c:v libx264 -preset slow -crf ${CRF:-21} -tune animation -profile:v high -pix_fmt yuv420p -g 60 \
   -af "loudnorm=I=-14:TP=-1.0:LRA=11:measured_I=$(get input_i):measured_TP=$(get input_tp):measured_LRA=$(get input_lra):measured_thresh=$(get input_thresh):offset=$(get target_offset):linear=true,aresample=48000" \
   -c:a aac -b:a 256k -movflags +faststart "$OUT"
 ffprobe -v error -show_entries format=duration,size -of default=nw=1 "$OUT"

@@ -2,9 +2,13 @@ import React, { useMemo } from "react";
 import { Audio, Sequence, staticFile } from "remotion";
 import { allLines, TL } from "../timeline";
 
-const MUSIC_BED = 0.26; // music level when nobody is talking
-const MUSIC_UNDER = 0.075; // music level under the voice
+const MUSIC_BED = 0.19; // music level when nobody is talking
+const MUSIC_UNDER = 0.06; // music level under the voice
 export const MUSIC_CUTS: Array<[number, number]> = []; // [from, to) frames where the music is silenced (filled per video)
+
+/** frames a line-level SFX starts before its line, so long sounds finish before the first word */
+const SFX_LEAD: Record<string, number> = { scratch: 17, whoosh: 15, cash: 6, drumhit: 6, impact: 4, ticktock: 4 };
+const SFX_LINE_VOLUME: Record<string, number> = { scratch: 0.38, typing: 0.22, ticktock: 0.22, buzzer: 0.26, coin: 0.3 };
 
 /** per-frame music gain: ducked under voice, with smooth attack/release */
 const useMusicEnvelope = (cuts: Array<[number, number]>) =>
@@ -42,8 +46,8 @@ export const AudioLayer: React.FC<{ musicCuts?: Array<[number, number]>; musicRe
       {lines
         .filter((l) => l.sfx)
         .map((l) => (
-          <Sequence key={`sfx-${l.id}`} from={Math.max(0, l.start - 4)} durationInFrames={150} layout="none">
-            <Audio src={staticFile(`sfx/${l.sfx}.wav`)} volume={0.45} />
+          <Sequence key={`sfx-${l.id}`} from={Math.max(0, l.start - (SFX_LEAD[l.sfx ?? ""] ?? 4))} durationInFrames={150} layout="none">
+            <Audio src={staticFile(`sfx/${l.sfx}.wav`)} volume={SFX_LINE_VOLUME[l.sfx ?? ""] ?? 0.32} />
           </Sequence>
         ))}
       {musicRestartAt !== undefined ? (

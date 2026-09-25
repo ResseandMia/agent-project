@@ -15,7 +15,7 @@ const renderWithKeywords = (text: string, keywords: string[]) => {
     const k = kws.find((kw) => text.startsWith(kw, i));
     if (k) {
       parts.push(
-        <span key={key++} style={{ color: C.red, background: `${C.yellow}88`, borderRadius: 8, padding: "0 4px" }}>
+        <span key={key++} style={{ color: C.red, background: `${C.yellow}88`, borderRadius: 8, padding: "0 4px", whiteSpace: "nowrap" }}>
           {k}
         </span>,
       );
@@ -28,6 +28,9 @@ const renderWithKeywords = (text: string, keywords: string[]) => {
   return parts;
 };
 
+/** approximate rendered width in em (CJK = 1, Latin ≈ 0.62, space ≈ 0.3); must match vis_len in scripts/build_tts.py */
+const visLen = (t: string) => [...t].reduce((a, ch) => a + (ch === " " ? 0.3 : ch.charCodeAt(0) < 128 ? 0.62 : 1), 0);
+
 /** Speech-bubble captions, with the speaker's mascot as the avatar. */
 export const Captions: React.FC = () => {
   const f = useCurrentFrame();
@@ -39,7 +42,7 @@ export const Captions: React.FC = () => {
     (f < line.captions[0]?.start ? line.captions[0] : line.captions[line.captions.length - 1]);
   if (!chunk) return null;
   const st = speakerStyle(line.speaker);
-  const appear = interpolate(f, [line.start - 2, line.start + 4], [0, 1], clamp);
+  const appear = line.start <= 4 ? 1 : interpolate(f, [line.start - 2, line.start + 4], [0, 1], clamp);
   const chunkPop = interpolate(f, [chunk.start - 2, chunk.start + 3], [0.92, 1], clamp);
   const char = TL.characters.find((c) => c.id === line.speaker);
   const left = st.side === "left";
@@ -64,7 +67,7 @@ export const Captions: React.FC = () => {
         <div
           style={{
             fontFamily: FONT.black,
-            fontSize: 28,
+            fontSize: 34,
             color: C.paper,
             background: st.color,
             border: `4px solid ${C.ink}`,
@@ -108,11 +111,12 @@ export const Captions: React.FC = () => {
         <div
           style={{
             fontFamily: FONT.black,
-            fontSize: 54,
+            fontSize: Math.max(...chunk.text.split("\n").map(visLen)) > 13.5 ? 48 : 54,
             lineHeight: 1.32,
             color: C.ink,
             textAlign: "center",
-            wordBreak: "break-all",
+            whiteSpace: "pre-line",
+            wordBreak: "normal",
           }}
         >
           {renderWithKeywords(chunk.text, line.keywords)}

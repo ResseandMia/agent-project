@@ -221,10 +221,14 @@ def main():
     ap.add_argument("--duration", type=float, required=True, help="seconds the track must cover")
     ap.add_argument("--out", required=True)
     ap.add_argument("--tail", type=float, default=2.5, help="seconds of ring-out after the final hit")
+    ap.add_argument("--final-at", type=float, default=None, help="seconds (in the track) where the final chord should land")
     args = ap.parse_args()
 
     bar_sec = 4 * 60 / BPM
-    n_bars = math.ceil((args.duration - args.tail) / bar_sec) + 1
+    if args.final_at is not None:
+        n_bars = max(4, round(args.final_at / bar_sec) + 1)  # final chord on the bar closest to --final-at
+    else:
+        n_bars = math.floor((args.duration - args.tail) / bar_sec) + 1
     mid, plan = build(n_bars)
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     midi_path = os.path.splitext(args.out)[0] + ".mid"
@@ -235,9 +239,17 @@ def main():
     x, sr = sf.read(raw, dtype="float32")
     os.remove(raw)
     final_hit = (n_bars - 1) * bar_sec
-    x = x[: int((final_hit + args.tail) * sr)]
-    # fade the tail
-    fade = int(args.tail * 0.8 * sr)
+    end = max(final_hit + args.tail, args.duration)
+    x = x[: int(end * sr)]
+    if len(x) < int(end * sr):
+        x = np.concatenate([x, np.zeros((int(end * sr) - len(x), x.shape[1]), dtype=x.dtype)])
+    # EQ for a music bed under speech: cut rumble < 45 Hz and shelve the low-mids down ~4.5 dB (below ~220 Hz)
+    from scipy import signal
+    x = signal.sosfilt(signal.butter(2, 45, btype="high", fs=sr, output="sos"), x, axis=0)
+    low = signal.sosfilt(signal.butter(2, 220, btype="low", fs=sr, output="sos"), x, axis=0)
+    x = (x - 0.4 * low).astype(np.float32)
+    # fade out over the ring-out after the final chord
+    fade = int(max(0.5, end - final_hit - 0.3) * sr)
     x[-fade:] *= np.linspace(1, 0, fade)[:, None] ** 2
     x /= max(1e-6, np.abs(x).max()) / 0.89
     sf.write(args.out, x, sr, subtype="PCM_16")

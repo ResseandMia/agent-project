@@ -11,7 +11,6 @@ const BLOBS = [
 
 export const Background: React.FC<{ tint?: string }> = ({ tint }) => {
   const f = useCurrentFrame();
-  const drift = (f * 0.4) % 48;
   return (
     <AbsoluteFill style={{ background: tint ?? C.cream, overflow: "hidden" }}>
       {BLOBS.map((b, i) => (
@@ -19,8 +18,8 @@ export const Background: React.FC<{ tint?: string }> = ({ tint }) => {
           key={i}
           style={{
             position: "absolute",
-            left: b.x - b.r + Math.sin(f * b.sp + b.ph) * 60,
-            top: b.y - b.r + Math.cos(f * b.sp * 1.3 + b.ph) * 50,
+            left: b.x - b.r + Math.sin(f * b.sp * 0.35 + b.ph) * 40,
+            top: b.y - b.r + Math.cos(f * b.sp * 0.45 + b.ph) * 30,
             width: b.r * 2,
             height: b.r * 2,
             borderRadius: "50%",
@@ -34,7 +33,6 @@ export const Background: React.FC<{ tint?: string }> = ({ tint }) => {
         style={{
           backgroundImage: `radial-gradient(${C.ink}22 3px, transparent 3.5px)`,
           backgroundSize: "48px 48px",
-          backgroundPosition: `${drift}px ${drift}px`,
         }}
       />
     </AbsoluteFill>

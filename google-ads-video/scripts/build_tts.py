@@ -89,6 +89,7 @@ def normalize_speech(text: str) -> str:
         return pre + num2zh(num) + nxt
     t = re.sub(r"(第?)(\d+(?:\.\d+)?)\s*(.?)", repl, t)
     t = t.replace("÷", "除以").replace("＝", "等于").replace("=", "等于").replace("+", "加").replace("＋", "加")
+    t = t.replace("／", "")
     t = t.replace("×", "乘以").replace("→", "，").replace("·", "").replace("/", "、")
     t = t.replace("“", "").replace("”", "").replace("「", "").replace("」", "").replace("《", "").replace("》", "")
     t = re.sub(r"[（(]([^）)]*)[）)]", r"，\1，", t)
@@ -109,16 +110,21 @@ PUNCT = "，。！？；：、…,.!?;:"
 
 def vis_len(s: str) -> float:
     """display width in Chinese-character units (ASCII counts ~half)"""
-    return sum(0.55 if ord(ch) < 128 else 1 for ch in s if ch != " ")
+    return sum(0.3 if ch == " " else 0.62 if ord(ch) < 128 else 1 for ch in s)
 KEEP_END = "？！?!"
 
 
-def chunk_caption(text: str, max_len=15):
+def chunk_caption(text: str, max_len=17):
     """split display text into caption chunks at punctuation, then by length."""
     parts, cur = [], ""
-    for ch in text:
+    for i, ch in enumerate(text):
+        if ch == "／":  # manual hard break
+            parts.append(cur)
+            cur = ""
+            continue
         cur += ch
-        if ch in PUNCT:
+        between_digits = ch in ".," and 0 < i < len(text) - 1 and text[i - 1].isdigit() and text[i + 1].isdigit()
+        if ch in PUNCT and not between_digits:
             parts.append(cur)
             cur = ""
     if cur.strip():
@@ -134,7 +140,15 @@ def chunk_caption(text: str, max_len=15):
             for w in jieba.lcut(body):
                 pos += len(w)
                 bounds.append(pos)
-            bounds = [b for b in bounds if 2 <= b <= len(body) - 2]
+            depth, inside = 0, set()
+            for i, ch in enumerate(body):
+                if ch in "（(「“":
+                    depth += 1
+                elif ch in "）)」”":
+                    depth -= 1
+                if depth > 0:
+                    inside.add(i + 1)
+            bounds = [b for b in bounds if 2 <= b <= len(body) - 2 and b not in inside and body[b] != "的"]
             if not bounds:
                 break
             cut = min(bounds, key=lambda b: abs(vis_len(body[:b]) - target) + (0 if body[b - 1] in " =+÷，" else 0.6))
@@ -142,9 +156,21 @@ def chunk_caption(text: str, max_len=15):
             body = body[cut:].strip()
         if body:
             out.append(body)
-    # merge very short chunks into the previous one
+    # merge very short chunks into a neighbour: tiny leading words ("二，", "能，", "呃……") join the next chunk,
+    # other short tails join the previous one
+    fwd = []
+    carry = ""
+    for i, p in enumerate(out):
+        bare = p.rstrip(PUNCT)
+        if vis_len(bare) <= 2 and i + 1 < len(out) and vis_len(bare) + vis_len(out[i + 1].rstrip(PUNCT)) <= max_len + 1:
+            carry += p
+            continue
+        fwd.append(carry + p)
+        carry = ""
+    if carry:
+        fwd.append(carry)
     merged = []
-    for p in out:
+    for p in fwd:
         bare = p.rstrip(PUNCT)
         if merged and vis_len(bare) <= 4 and vis_len(merged[-1].rstrip(PUNCT)) + vis_len(bare) <= max_len + 2:
             merged[-1] += p
@@ -158,6 +184,37 @@ def chunk_caption(text: str, max_len=15):
         if p:
             cleaned.append(p)
     return cleaned
+
+
+def balance_lines(chunk: str, keywords, one_line=15.0) -> str:
+    """Insert one '\n' at a word boundary near the middle when a caption chunk would wrap,
+    so the bubble never ends with a lone character. Never breaks inside a keyword or brackets."""
+    if vis_len(chunk) <= one_line:
+        return chunk
+    protected = set()
+    for kw in keywords or []:
+        i = chunk.find(kw)
+        while i >= 0:
+            protected.update(range(i + 1, i + len(kw)))
+            i = chunk.find(kw, i + 1)
+    depth = 0
+    for i, ch in enumerate(chunk):
+        if ch in "（(「“":
+            depth += 1
+        elif ch in "）)」”":
+            depth -= 1
+        if depth > 0:
+            protected.add(i + 1)
+    bounds, pos = [], 0
+    for w in jieba.lcut(chunk):
+        pos += len(w)
+        if 2 <= pos <= len(chunk) - 2 and pos not in protected:
+            bounds.append(pos)
+    if not bounds:
+        return chunk
+    half = vis_len(chunk) / 2
+    cut = min(bounds, key=lambda b: abs(vis_len(chunk[:b]) - half) - (0.8 if chunk[b - 1] in "，、：；" else 0))
+    return chunk[:cut].rstrip() + "\n" + chunk[cut:].lstrip()
 
 
 def spoken_weight(s: str) -> float:
@@ -294,7 +351,7 @@ def main():
             caps, acc = [], start
             for c, w in zip(chunks, weights):
                 d = dur_f * w / tot
-                caps.append({"text": c, "start": int(round(acc)), "end": int(round(acc + d))})
+                caps.append({"text": balance_lines(c, ln.get("keywords", [])), "start": int(round(acc)), "end": int(round(acc + d))})
                 acc += d
             caps[-1]["end"] = end
             lines_out.append({
